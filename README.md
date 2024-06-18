@@ -2,7 +2,8 @@
 Official code for "[MolecularGPT: Open Large Language Model (LLM) for Few-Shot Molecular Property Prediction]".
 
 ## Installation
-The required packages can be installed by running `pip install -r requirements.txt`.
+The required packages can be installed by running 
+`pip install -r requirements.txt`.
 
 ## 🚀Quick Start
 
