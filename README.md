@@ -96,9 +96,13 @@ Download from https://huggingface.co/meta-llama/Llama-2-7b-chat-hf and move to `
 #### Download LoRA Weighs form huggingface
 Download the `adapter_config.json` and `adapter_model.bin` from https://huggingface.co/YuyanLiu/MolecularGPT and move to `./ckpts/lora`
 #### Evaluate the performance on classification tasks 
-`python downstream_test_llama_cla.py --load_8bit --base_model $model --lora_weights $lora --path $path --shot $shot` 
+```
+python downstream_test_llama_cla.py --load_8bit --base_model $model --lora_weights $lora --path $path --shot $shot
+```
 ### Evaluate the performance on regression tasks 
-`python downstream_test_llama_reg.py --load_8bit --base_model $model --lora_weights $lora --path $path --shot $shot` 
+```
+python downstream_test_llama_reg.py --load_8bit --base_model $model --lora_weights $lora --path $path --shot $shot
+``` 
 ### Evaluate the bacelines
 ...
 
