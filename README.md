@@ -17,6 +17,24 @@ The required packages can be installed by running \
 Downloaded from https://github.com/shenwanxiang/ChemBench/blob/master/src/chembench/data_and_index/CYP450/CYP450.csv.gz \
 Then uncompress file CYP450.csv to ./property_data/cyp450/raw/CYP450.csv.
 ### Construct the K-Shot instruction datasets
+#### Train datasets
+
+`python prep_encode_train.py` \
+`python prep_index.py` \
+`python ICL_train.py` \
+
+#### Test datasets
+`python prep_encode_test.py` \
+`python prep_index.py` \
+For classfication task: \
+`ICL_test_sim_cls.py` \
+For regression task: \
+`ICL_test_sim_reg.py` \
+To construct the k-shot instructions arranged by ascending order: \
+`ICL_test_reverse_cls.py` adn `ICL_test_reverse_reg.py` \
+To construct the k-shot instructions retrieved based on diversity : \
+`ICL_test_diversity.py`
+
 
 ### Train the model
 #### Download LLaMA2-7b-chat from huggingface
