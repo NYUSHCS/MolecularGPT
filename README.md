@@ -73,11 +73,13 @@ python prep_encode_test.py
 python prep_index_test.py
 ```
 For classfication and regression task:
-```ICL_test_sim_cls.py
+```
+ICL_test_sim_cls.py
 ICL_test_sim_reg.py
 ```
 To construct the k-shot instructions arranged by ascending order: 
-```ICL_test_reverse_cls.py
+```
+ICL_test_reverse_cls.py
 ICL_test_reverse_reg.py
 ```
 To construct the k-shot instructions retrieved based on diversity : 
