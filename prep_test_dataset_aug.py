@@ -41,7 +41,7 @@ parser.add_argument('--task_policy',type=str,default='traversal', choices=['sing
 parser.add_argument('--split', type=str, default='scaffold')
 
 # set instruction type!!!
-parser.add_argument('--prompt_augmentation',default='shorten',choices=['','rewrite','expand','detail','shorten','name'])
+parser.add_argument('--prompt_augmentation',default='',choices=['','rewrite','expand','detail','shorten','name'])
 
 parser.add_argument('--runseed', type=int, default=0)
 parser.add_argument('--device', type=int, default=0)
@@ -182,14 +182,31 @@ if __name__ == '__main__':
                 prompt_list.append(prompt[label_id][0])
 
                 smiles_list.append(test_dataset[i].smiles)
-
+            
+            
             df = pd.DataFrame({
             'instruction': prompt_list,
-            'input': smiles_list,
-            'output': label_list
+            'smiles': smiles_list,
+            'label': label_list
             })
         
-            args.prompt_augmentation
+
+            # to parquet
+            new_path = os.path.join('./test_process/', data)
+            os.makedirs(new_path, exist_ok=True)
+            df.to_parquet(os.path.join(new_path, 'test_{}_{}.parquet'.format(data, label_id)), index=False)
+            
             # to zero shot json
-            os.makedirs(os.path.join('./test_dataset/0-shot-'+ args.prompt_augmentation, data), exist_ok=True)
-            df.to_json(os.path.join('./test_dataset/0-shot-'+ args.prompt_augmentation, data) + '/{}.json'.format(int(label_id)), orient='records', lines=True)
+            
+            df = df.rename(columns={
+            'smiles': 'input',
+            'label': 'output'
+        })
+
+            # to zero shot json
+            if args.prompt_augmentation=='':
+                os.makedirs(os.path.join('./test_dataset/0-shot', data), exist_ok=True)
+                df.to_json(os.path.join('./test_dataset/0-shot', data) + '/{}.json'.format(int(label_id)), orient='records', lines=True)
+            else:   
+                os.makedirs(os.path.join('./test_dataset/0-shot-'+ args.prompt_augmentation, data), exist_ok=True)
+                df.to_json(os.path.join('./test_dataset/0-shot-'+ args.prompt_augmentation, data) + '/{}.json'.format(int(label_id)), orient='records', lines=True)

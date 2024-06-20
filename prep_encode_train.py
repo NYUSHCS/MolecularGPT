@@ -259,5 +259,5 @@ if __name__ == "__main__":
     datasets = ['assay','property','qm9']
     
     for dataset in datasets:
-        augment_parquet_shards(os.path.join("./train_process",dataset,'parquet'), augment_with_rdkit, processes)
+        augment_parquet_shards(os.path.join("./train_process",dataset), augment_with_rdkit, processes)
 

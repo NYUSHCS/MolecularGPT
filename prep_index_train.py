@@ -1,10 +1,9 @@
-"""Fingerprints the molecules, encoding them with 4 techniques, producing 28 Billions fingerprints for 7 Billion molecules."""
+"""Indexes fingerprints using USearch."""
 
 import os
 import logging
 from typing import List, Callable
 from multiprocessing import Process, cpu_count
-from rdkit.Chem import AllChem, MACCSkeys
 from pathlib import Path
 
 import numpy as np
@@ -14,58 +13,55 @@ import pyarrow.parquet as pq
 from usearch.index import Index, CompiledMetric, MetricKind, MetricSignature, ScalarKind
 from usearch.eval import self_recall, SearchStats
 
+from rdkit import Chem
+from rdkit.Chem import AllChem, MACCSkeys
+
 from metrics_numba import (
     tanimoto_conditional,
+    tanimoto_mixed,
     tanimoto_maccs,
 )
-from to_fingerprint import (
-    # smiles_to_maccs_ecfp4_fcfp4,
-    # smiles_to_pubchem,
-    shape_mixed,
-    shape_maccs,
-)
-
 from dataset import (
     write_table,
     FingerprintedDataset,
     FingerprintedEntry,
 )
+from to_fingerprint import (
+    smiles_to_maccs_ecfp4_fcfp4,
+    smiles_to_pubchem,
+    shape_mixed,
+    shape_maccs,
+)
 
-logger = logging.getLogger(__name__)
-
-from rdkit import Chem
-
-import pandas as pd
-import pyarrow as pa
-
-import shutil
 
 def molecule_to_maccs(
     smiles: str):
-
+    # print(smiles)
     molecule = Chem.MolFromSmiles(smiles)
-
+    # print(molecule)
+    # print(MACCSkeys.GenMACCSKeys(molecule))
     return np.packbits(MACCSkeys.GenMACCSKeys(molecule))
+
+
+
+logger = logging.getLogger(__name__)
 
 
 def augment_with_rdkit(parquet_path: os.PathLike):
     meta = pq.read_metadata(parquet_path)
-    
     column_names: List[str] = meta.schema.names
     if "maccs" in column_names:
         return
 
     logger.info(f"Starting file {parquet_path}")
     table: pa.Table = pq.read_table(parquet_path)
+
     maccs_list = []
 
-    
-    for smiles in table["smiles"]:
+    for smiles in table["graph"]:
         try:
-
             fingers = molecule_to_maccs(str(smiles))
             maccs_list.append(fingers.tobytes())
-
         except Exception:
             maccs_list.append(bytes(bytearray(21)))
 
@@ -73,9 +69,7 @@ def augment_with_rdkit(parquet_path: os.PathLike):
 
     maccs_field = pa.field("maccs", pa.binary(21), nullable=False)
 
-
     table = table.append_column(maccs_field, maccs_list)
-
     write_table(table, parquet_path)
 
 
@@ -87,7 +81,6 @@ def augment_parquets_shard(
 ):
     filenames: List[str] = sorted(os.listdir(parquet_dir))
     files_count = len(filenames)
-    print(parquet_dir, augmentation, shard_index, shards_count)
     try:
         for file_idx in range(shard_index, files_count, shards_count):
             try:
@@ -114,7 +107,6 @@ def augment_parquet_shards(
     if processes > 1:
         process_pool = []
         for i in range(processes):
-            print(parquet_dir, augmentation, i, processes)
             p = Process(
                 target=augment_parquets_shard,
                 args=(parquet_dir, augmentation, i, processes),
@@ -128,73 +120,9 @@ def augment_parquet_shards(
         augment_parquets_shard(parquet_dir, augmentation, 0, 1)
 
 
-def shards_index(dataset: FingerprintedDataset):
-    os.makedirs(os.path.join(dataset.dir, "usearch-maccs"), exist_ok=True)
-
-    for shard_idx, shard in enumerate(dataset.shards):
-        index_path_maccs = os.path.join(
-            dataset.dir, "usearch-maccs", shard.name + ".usearch"
-        )
-
-
-        if (
-            Index.metadata(index_path_maccs) is not None
-        ):
-            continue
-        logger.info(f"Starting {shard_idx + 1} / {len(dataset.shards)}")
-        table = shard.load_table()
-        n = len(table)
-
-        # No need to shuffle the entries as they already are:
-
-        keys = np.arange(shard.first_key, shard.first_key + n)
-        maccs_fingerprints = [table["maccs"][i].as_buffer() for i in range(n)]
-
-        # First construct the index just for MACCS representations
-        vectors = np.vstack(
-            [
-                FingerprintedEntry.from_parts(
-                    None,
-                    maccs_fingerprints[i],
-                    None,
-                    None,
-                    shape_maccs,
-                ).fingerprint
-                for i in range(n)
-            ]
-        )
-
-        index_maccs = Index(
-            ndim=shape_maccs.nbits,
-            dtype=ScalarKind.B1,
-            metric=CompiledMetric(
-                pointer=tanimoto_maccs.address,
-                kind=MetricKind.Tanimoto,
-                signature=MetricSignature.ArrayArray,
-            ),
-        )
-        index_maccs.add(
-            keys,
-            vectors,
-            log=f"Building {index_path_maccs}",
-            batch_size=100_000,
-        )
-
-        # Optional self-recall evaluation:
-        stats: SearchStats = self_recall(index_maccs, sample=0.01)
-        logger.info(f"Self-recall: {100*stats.mean_recall:.2f} %")
-        logger.info(f"Efficiency: {100*stats.mean_efficiency:.2f} %")
-        index_maccs.save(index_path_maccs)
-
-        # Discard the objects to save some memory
-        dataset.shards[shard_idx].table_cached = None
-        dataset.shards[shard_idx].index_cached = None
-
-
 def mono_index_maccs(dataset: FingerprintedDataset):
-    index_path_maccs = os.path.join("indexes", dataset.dir, "usearch-maccs.usearch")
-    print(index_path_maccs)
-    os.makedirs(os.path.join("indexes", dataset.dir), exist_ok=True)
+
+    os.makedirs(os.path.join(dataset.dir), exist_ok=True)
 
     index_maccs = Index(
         ndim=shape_maccs.nbits,
@@ -209,6 +137,10 @@ def mono_index_maccs(dataset: FingerprintedDataset):
 
     try:
         for shard_idx, shard in enumerate(dataset.shards):
+            if shard.name.split('_')[0] == 'test':
+                continue
+            index_path_maccs = os.path.join(dataset.dir, "index-maccs.usearch")
+
             if shard.first_key in index_maccs:
                 logger.info(f"Skipping {shard_idx + 1} / {len(dataset.shards)}")
                 continue
@@ -225,10 +157,10 @@ def mono_index_maccs(dataset: FingerprintedDataset):
             vectors = np.vstack(
                 [
                     FingerprintedEntry.from_parts(
-                        None,
+                        # None,
                         maccs_fingerprints[i],
-                        None,
-                        None,
+                        # None,
+                        # None,
                         shape_maccs,
                     ).fingerprint
                     for i in range(n)
@@ -256,39 +188,21 @@ def mono_index_maccs(dataset: FingerprintedDataset):
 
 
 if __name__ == "__main__":
-    logger.info("Time to encode some molecules!")
+    logger.info("Time to index some molecules!")
 
     processes = max(cpu_count() - 4, 1)
     
-    # classfication and regression datasets:
-    datasets = [
-        'bace',
-        'bbbp',
-        'cyp450',
-        'hiv',
-        'muv',
-        'pcba',
-        'tox21',
-        'toxcast',
-        'esol',
-        'freesolv',
-        'lipo'
-        ]
+    # train datasets
+    path ='./train_process'
+    datasets = ['assay','property','qm9']
 
     
     for dataset in datasets:
-        
-        # encode total
-        path = os.path.join('./test_process/', dataset)
-        file_names = [f.name for f in Path(path).iterdir() if f.is_dir()]
-        for file_name in file_names:
-            dir  = os.path.join(path, file_name)
-            # print(dir)
-            augment_parquet_shards(dir, augment_with_rdkit, processes)
+        path_1 = os.path.join(path, dataset)
+
+        file_names = [f.name for f in Path(path_1).iterdir() if f.is_dir()]
+        for f in file_names:
+            mono_index_maccs(FingerprintedDataset.open((os.path.join(path_1, f))))
             
-        # encode test
-        
-        path = os.path.join('./test_process/', dataset)
+            
     
-        # print(path)
-        augment_parquet_shards(path, augment_with_rdkit, processes)
