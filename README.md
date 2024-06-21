@@ -99,13 +99,13 @@ ICL_test_diversity.py
 
 ### Train the model
 #### Download LLaMA-2-7b-chat from HuggingFace🤗
-```mkdir -p ckpts/llama```
+```mkdir -p ckpts/llama``` \
 Download from https://huggingface.co/meta-llama/Llama-2-7b-chat-hf and move to `./ckpts/llama`
 #### Train the MolecularGPT
 
 ### Evaluate the model
 #### Download LoRA Weighs form HuggingFace🤗
-```mkdir -p ckpts/lora```
+```mkdir -p ckpts/lora``` \
 Download the `adapter_config.json` and `adapter_model.bin` from https://huggingface.co/YuyanLiu/MolecularGPT and move to `./ckpts/lora`
 #### Evaluate the performance on classification tasks 
 ```
