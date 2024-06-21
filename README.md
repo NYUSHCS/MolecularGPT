@@ -11,7 +11,7 @@ The required packages can be installed by running
 conda create -n MolecularGPT python==3.10
 conda activate MolecularGPT
 cd .\MolecularGPT 
-bash init_env.sh 
+bash init_env.sh
 pip install git+https://github.com/ashvardanian/usearch-molecules.git@main
 ```
 ### Download the Datasets
@@ -72,13 +72,20 @@ cd ..
 python prep_encode_train.py
 python prep_index_train.py
 python ICL_train.py
+
+# 0,4-shot instruction dataset
+mkdir -p train_dataset/0-4-shot
+prep_0_4_shot.py
+# 0,1,2,3,4-shot instruction dataset
+mkdir -p train_dataset/01234-shot
+prep_01234.py
 ```
 
 #### Test datasets
 ```
 mkdir -p test_process
 mkdir -p test_dataset
-python prep_test_dataset_aug.py --prompt_augmentation ''
+python prep_test_dataset_aug.py --prompt_augmentation ''  # choices=['','rewrite','expand','detail','shorten','name']
 python prep_encode_test.py
 python prep_index_test.py
 ```
@@ -104,7 +111,7 @@ mkdir -p ckpts/llama
 ``` 
 Download from https://huggingface.co/meta-llama/Llama-2-7b-chat-hf and move to `./ckpts/llama`
 #### Train the MolecularGPT
-
+sbatch finetune_moleculargpt.sh
 ### Evaluate the model
 #### Download LoRA Weighs from HuggingFace🤗
 ```
