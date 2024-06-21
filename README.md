@@ -135,8 +135,10 @@ To evaluate the bacelines like GIMLET, MoMu, KVPLM, and Galactica, you could ref
 If you find this repo useful, please star the repo and cite:
 
 ```bibtex
-@article{MolecularGPT,
-      title={MolecularGPT: Open Large Language Model (LLM) for Few-Shot Molecular Property Prediction},
-      year={2024}
-    }
-``
+@article{liu2024moleculargpt,
+    title={MolecularGPT: Open Large Language Model (LLM) for Few-Shot Molecular Property Prediction},
+    author={Yuyan Liu and Sirui Ding and Sheng Zhou and Wenqi Fan and Qiaoyu Tan},
+    year={2024},
+    eprint={2406.12950},
+    archivePrefix={arXiv}
+}
