@@ -106,7 +106,7 @@ Download from https://huggingface.co/meta-llama/Llama-2-7b-chat-hf and move to `
 #### Train the MolecularGPT
 
 ### Evaluate the model
-#### Download LoRA Weighs form HuggingFace🤗
+#### Download LoRA Weighs from HuggingFace🤗
 ```
 mkdir -p ckpts/lora
 ``` 
